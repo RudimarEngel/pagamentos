@@ -28,6 +28,9 @@ func getAlbums(c *gin.Context) {
 
 func postTransferencia(c *gin.Context) {
 	fmt.Println("AAAAAAAAAAAAAAAAA!")
+
+	varificarLogin();
+
 	var novaTransferencia transferencia
 
 	if err := c.BindJSON(&novaTransferencia); err != nil {
@@ -39,6 +42,13 @@ func postTransferencia(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, novaTransferencia)
 }
 
+
+func varificarLogin() {
+	fmt.Println("BBBBBBBBBBBBBBBB!")
+	// função de verificação dos dados de sessao
+
+	//return true;
+}
 
 func main() {
 	router := gin.Default()
