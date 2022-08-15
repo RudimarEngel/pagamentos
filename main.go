@@ -6,6 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"database/sql"
+  _ "github.com/go-sql-driver/mysql"
+
 //	"./pkg"
 )
 
@@ -16,18 +19,44 @@ type transferencia struct {
 	IdRecebedor	 float64 `json:"IdRecebedor"`
 }
 
-/*var albums = []album {
-	{ID: "1", Title: "Blue Train", Artist: "John Coltrane", Price: 56.99},
-  {ID: "2", Title: "Jeru", Artist: "Gerry Mulligan", Price: 17.99},
-  {ID: "3", Title: "Sarah Vaughan and Clifford Brown", Artist: "Sarah Vaughan", Price: 39.99},
+type usuario struct {
+	UsuarioId 		int `json:"id"`
+  UsuarioTipoId int `json:"UsuarioTipoId"`
+  Nome 					string `json:"Nome"`
+  CpfCnpj 			string `json:"CpfCnpj"`
+  Email 				string `json:"Email"`
 }
 
-func getAlbums(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, albums)
-}*/
+func dbConnection() {
+	fmt.Println("pppppppp")
+	db, err := sql.Open("mysql", "root:123@tcp(127.0.0.1:3306)/pagamentos")
+	if err != nil {
+		fmt.Println("PPPPPPPP")
+		panic(err.Error())
+	}
+	defer db.Close()
+	fmt.Println("db: ", db)
+	results, err := db.Query("SELECT Nome FROM Usuario where UsuarioId = 1;")
+	fmt.Println("results: ", results)
+	if err !=nil {
+			panic(err.Error())
+	}
+	for results.Next() {
+		var usuario usuario
+		err = results.Scan(&usuario.Nome)
+		if err !=nil {
+				panic(err.Error())
+		}
+		fmt.Println("Nome: " ,usuario.Nome)
+	}
+
+	fmt.Println("Success!")
+}
 
 func postTransferencia(c *gin.Context) {
 	fmt.Println("AAAAAAAAAAAAAAAAA!")
+
+	dbConnection();
 
 	varificarLogin();
 
@@ -45,7 +74,7 @@ func postTransferencia(c *gin.Context) {
 
 func varificarLogin() {
 	fmt.Println("BBBBBBBBBBBBBBBB!")
-	// função de verificação dos dados de sessao
+	// função de verificação dos dados de sessao, usando o token
 
 	//return true;
 }

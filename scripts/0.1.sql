@@ -1,7 +1,9 @@
 
+-- mysql -u root -p pagamentos
+  -- password: 
 -- show databases;
 -- SELECT CURRENT_USER();
--- ALTER USER 'root'@'localhost' IDENTIFIED BY '123';
+-- ALTER USER 'root'@'localhost' IDENTIFIED BY 'senha_fake';
 
 drop database pagamentos;
 
