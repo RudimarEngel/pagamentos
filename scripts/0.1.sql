@@ -33,6 +33,8 @@ create table Usuario (
 AUTO_INCREMENT=1;
 
 
+
+
 -- DADOS MOCK
 insert into UsuarioTipo (Tipo) values ('lojistas'),('comuns');
 

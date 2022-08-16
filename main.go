@@ -9,14 +9,19 @@ import (
 	"database/sql"
   _ "github.com/go-sql-driver/mysql"
 
+	// "reflect"
+	"strconv"
+	"io/ioutil"
+	"encoding/json"
+
 //	"./pkg"
 )
 
 type transferencia struct {
 	ID		 string `json:"id"`
-	Valor	 string `json:"valor"`
-	IdPagante string `json:"IdPagante"`
-	IdRecebedor	 float64 `json:"IdRecebedor"`
+	Valor	 float64 `json:"valor"`
+	IdPagante int `json:"IdPagante"`
+	IdRecebedor	 int `json:"IdRecebedor"`
 }
 
 type usuario struct {
@@ -27,56 +32,83 @@ type usuario struct {
   Email 				string `json:"Email"`
 }
 
-func dbConnection() {
-	fmt.Println("pppppppp")
+type autorizacao struct {
+	Authorization bool
+}
+
+func dbConnection() *sql.DB {
+	
 	db, err := sql.Open("mysql", "root:123@tcp(127.0.0.1:3306)/pagamentos")
 	if err != nil {
-		fmt.Println("PPPPPPPP")
 		panic(err.Error())
 	}
-	defer db.Close()
-	fmt.Println("db: ", db)
-	results, err := db.Query("SELECT Nome FROM Usuario where UsuarioId = 1;")
-	fmt.Println("results: ", results)
-	if err !=nil {
-			panic(err.Error())
-	}
-	for results.Next() {
-		var usuario usuario
-		err = results.Scan(&usuario.Nome)
-		if err !=nil {
-				panic(err.Error())
-		}
-		fmt.Println("Nome: " ,usuario.Nome)
-	}
 
-	fmt.Println("Success!")
+	return db
+}
+
+func consultaAutorizacao() bool {
+	resp, err := http.Get("https://run.mocky.io/v3/d02168c6-d88d-4ff2-aac6-9e9eb3425e31")
+	if err != nil {
+		fmt.Println("err: ", err)
+	}
+   defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	var verify autorizacao
+	_ = json.Unmarshal([]byte(string(body)), &verify)
+
+	fmt.Println(" -> verify.Authorization: ", verify.Authorization)
+
+	return verify.Authorization
 }
 
 func postTransferencia(c *gin.Context) {
-	fmt.Println("AAAAAAAAAAAAAAAAA!")
-
-	dbConnection();
-
-	varificarLogin();
-
 	var novaTransferencia transferencia
 
 	if err := c.BindJSON(&novaTransferencia); err != nil {
+		fmt.Println("err: ", err)
 		return
 	}
 
-//	L.Demo()
-	
-	c.IndentedJSON(http.StatusCreated, novaTransferencia)
+	db := dbConnection();
+	// Verifica o Id do recebedor, considerando que este seja o dono da máquina
+	// Mas, acredito que o login deve ser da maquininha, ou de alguma outra ferramenta de pagamento.
+	if varificarLogin(db, novaTransferencia.IdRecebedor) {
+
+		// Verifica os saldos
+		// var saldoPagador := consultaSaldo(Id)
+		defer db.Close()
+
+		// Consulta o servidor autorizador
+		if !consultaAutorizacao() {
+			c.IndentedJSON( http.StatusUnauthorized, "Acesso negado!" );
+		}
+
+		// Realiza a tarnsferência
+
+		// Verifica os novos saldos
+		
+		// c.IndentedJSON(http.StatusCreated, novaTransferencia)
+		c.IndentedJSON(http.StatusOK , "Pagamento efetuado!");
+	} else {
+		c.IndentedJSON( http.StatusUnauthorized, "Acesso negado!" );
+	} 
 }
 
 
-func varificarLogin() {
-	fmt.Println("BBBBBBBBBBBBBBBB!")
-	// função de verificação dos dados de sessao, usando o token
+func varificarLogin (db *sql.DB, UsuarioId int) bool {
 
-	//return true;
+	query := "SELECT Nome FROM Usuario WHERE UsuarioId = " + strconv.Itoa(UsuarioId) + ";"
+	
+	results, err := db.Query(query)
+	if err !=nil {
+			panic(err.Error())
+	}
+	if results.Next() {
+		return true;
+	} else {
+		return false;
+	}
+	
 }
 
 func main() {
