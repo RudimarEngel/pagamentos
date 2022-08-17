@@ -42,6 +42,10 @@ create table Conta (
 )
 AUTO_INCREMENT=1;
 
+create table Acao (
+  AcaoId  bigint not null AUTO_INCREMENT,
+)
+
 
 
 -- DADOS MOCK

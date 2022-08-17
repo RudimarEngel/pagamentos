@@ -87,8 +87,19 @@ func consultaSaldo(db *sql.DB, UsuarioId int) conta {
 	return resultadoConta
 }
 
-func atualizarSaldo(db *sql.DB, UsuarioId int, novoSaldo float64) {
+func atualizarSaldo(db *sql.DB, UsuarioId int, novoSaldo float64) bool {
 
+	fmt.Println("novoSaldo: ", novoSaldo)
+
+	query := "UPDATE Conta SET Saldo = " + fmt.Sprintf("%f", novoSaldo) + 
+						 " WHERE UsuarioId = " + strconv.Itoa(UsuarioId) + ";"
+					
+	_, err := db.Query(query)
+	if err !=nil {
+		return false
+	}
+
+	return true
 }
 
 func postTransferencia(c *gin.Context) {
@@ -97,10 +108,6 @@ func postTransferencia(c *gin.Context) {
 		fmt.Println("err: ", err)
 		return
 	}
-
-	fmt.Println("novaTransferencia.Valor: ", novaTransferencia.Valor)
-	fmt.Println("novaTransferencia.IdPagante: ", novaTransferencia.IdPagante)
-	fmt.Println("novaTransferencia.IdRecebedor: ", novaTransferencia.IdRecebedor)
 
 	db := dbConnection();
 
@@ -126,24 +133,36 @@ func postTransferencia(c *gin.Context) {
 				defer db.Close()
 			}
 
-			// Realiza a tarnsferência
+			// Realiza a tarnsferência - alteração de saldos
 			novoSaldoPagador   := saldoPagador.Saldo - novaTransferencia.Valor
 			novoSaldoRecebedor := saldoRecebedor.Saldo + novaTransferencia.Valor
+			operacaoExecutada := atualizarSaldo(db, novaTransferencia.IdPagante, novoSaldoPagador)
 
-			fmt.Println("novoSaldoPagador: ", novoSaldoPagador)
-			atualizarSaldo(db, novaTransferencia.IdPagante, novoSaldoPagador)
-
-			//atualizarSaldo(db, novaTransferencia.IdRecebedor, novoSaldoRecebedor)
+			if operacaoExecutada {
+				operacaoExecutada = atualizarSaldo(db, novaTransferencia.IdRecebedor, novoSaldoRecebedor)
+			}
+			fmt.Println("operacaoExecutada: ", operacaoExecutada)
 
 			// Verifica os novos saldos?
 
 			// Salva o registro na tabelha bilhetes para possíveis cancelamentos.
+			if operacaoExecutada {
+
+			} else {
+				// registra o erro no pagamento
+			}
+
 
 			// fecha a conexão com o banco
 			defer db.Close()
 			
 			// c.IndentedJSON(http.StatusCreated, novaTransferencia)
-			c.IndentedJSON(http.StatusOK , "Pagamento efetuado!");
+			if operacaoExecutada {
+				c.IndentedJSON(http.StatusOK , "Pagamento efetuado!");
+			} else {
+				c.IndentedJSON(http.StatusInternalServerError , "Erro ao efetuar o pagamento!");
+			}
+			
 
 		} else {
 			// fecha a conexão com o banco
