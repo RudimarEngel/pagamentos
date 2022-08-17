@@ -18,7 +18,7 @@ import (
 )
 
 type transferencia struct {
-	ID		 string `json:"id"`
+	// ID		 string `json:"id"`
 	Valor	 float64 `json:"valor"`
 	IdPagante int `json:"IdPagante"`
 	IdRecebedor	 int `json:"IdRecebedor"`
@@ -26,14 +26,20 @@ type transferencia struct {
 
 type usuario struct {
 	UsuarioId 		int `json:"id"`
-  UsuarioTipoId int `json:"UsuarioTipoId"`
-  Nome 					string `json:"Nome"`
-  CpfCnpj 			string `json:"CpfCnpj"`
-  Email 				string `json:"Email"`
+	UsuarioTipoId int `json:"UsuarioTipoId"`
+	Nome 					string `json:"Nome"`
+	CpfCnpj 			string `json:"CpfCnpj"`
+	Email 				string `json:"Email"`
 }
 
 type autorizacao struct {
 	Authorization bool
+}
+
+type conta struct {
+	ContaId 	int 		`json:"ContaId"`
+	UsuarioId int 		`json:"UsuarioId"`
+	Saldo	 		float64 `json:"Saldo"`
 }
 
 func dbConnection() *sql.DB {
@@ -61,35 +67,95 @@ func consultaAutorizacao() bool {
 	return verify.Authorization
 }
 
+func consultaSaldo(db *sql.DB, UsuarioId int) conta {
+	
+	var resultadoConta conta
+
+	query := "SELECT UsuarioId, Saldo FROM Conta WHERE UsuarioId = " + strconv.Itoa(UsuarioId) + ";"
+	
+	results, err := db.Query(query)
+	if err !=nil {
+		panic(err.Error())
+	}
+	for results.Next() {
+		err = results.Scan(&resultadoConta.UsuarioId, &resultadoConta.Saldo)
+		if err !=nil {
+				panic(err.Error())
+		}
+	}
+	
+	return resultadoConta
+}
+
+func atualizarSaldo(db *sql.DB, UsuarioId int, novoSaldo float64) {
+
+}
+
 func postTransferencia(c *gin.Context) {
 	var novaTransferencia transferencia
-
 	if err := c.BindJSON(&novaTransferencia); err != nil {
 		fmt.Println("err: ", err)
 		return
 	}
 
+	fmt.Println("novaTransferencia.Valor: ", novaTransferencia.Valor)
+	fmt.Println("novaTransferencia.IdPagante: ", novaTransferencia.IdPagante)
+	fmt.Println("novaTransferencia.IdRecebedor: ", novaTransferencia.IdRecebedor)
+
 	db := dbConnection();
+
 	// Verifica o Id do recebedor, considerando que este seja o dono da máquina
 	// Mas, acredito que o login deve ser da maquininha, ou de alguma outra ferramenta de pagamento.
 	if varificarLogin(db, novaTransferencia.IdRecebedor) {
 
-		// Verifica os saldos
-		// var saldoPagador := consultaSaldo(Id)
-		defer db.Close()
+		// Verifica o saldo do pagador
+		saldoPagador := consultaSaldo(db, novaTransferencia.IdPagante)
+		fmt.Println("saldoPagador.UsuarioId: ", saldoPagador.UsuarioId)
+		fmt.Println("saldoPagador.Saldo: ", saldoPagador.Saldo)
 
-		// Consulta o servidor autorizador
-		if !consultaAutorizacao() {
-			c.IndentedJSON( http.StatusUnauthorized, "Acesso negado!" );
+		if saldoPagador.Saldo >= novaTransferencia.Valor {
+			fmt.Println("Saldo Suficiente!")
+			// consulta o saldo do recebedor
+			saldoRecebedor := consultaSaldo(db, novaTransferencia.IdRecebedor)
+			fmt.Println("saldoRecebedor.UsuarioId: ", saldoRecebedor.UsuarioId)
+			fmt.Println("saldoRecebedor.Saldo: ", saldoRecebedor.Saldo)
+
+			// Consulta o servidor autorizador
+			if !consultaAutorizacao() {
+				c.IndentedJSON( http.StatusUnauthorized, "Pagamento não autorizado!" ); // 401
+				defer db.Close()
+			}
+
+			// Realiza a tarnsferência
+			novoSaldoPagador   := saldoPagador.Saldo - novaTransferencia.Valor
+			novoSaldoRecebedor := saldoRecebedor.Saldo + novaTransferencia.Valor
+
+			fmt.Println("novoSaldoPagador: ", novoSaldoPagador)
+			atualizarSaldo(db, novaTransferencia.IdPagante, novoSaldoPagador)
+
+			//atualizarSaldo(db, novaTransferencia.IdRecebedor, novoSaldoRecebedor)
+
+			// Verifica os novos saldos?
+
+			// Salva o registro na tabelha bilhetes para possíveis cancelamentos.
+
+			// fecha a conexão com o banco
+			defer db.Close()
+			
+			// c.IndentedJSON(http.StatusCreated, novaTransferencia)
+			c.IndentedJSON(http.StatusOK , "Pagamento efetuado!");
+
+		} else {
+			// fecha a conexão com o banco
+			defer db.Close()
+			fmt.Println("Saldo Insuficiente!")
+			c.IndentedJSON(http.StatusOK , "Saldo Insuficiente!");
 		}
 
-		// Realiza a tarnsferência
-
-		// Verifica os novos saldos
 		
-		// c.IndentedJSON(http.StatusCreated, novaTransferencia)
-		c.IndentedJSON(http.StatusOK , "Pagamento efetuado!");
 	} else {
+		// fecha a conexão com o banco
+		defer db.Close()
 		c.IndentedJSON( http.StatusUnauthorized, "Acesso negado!" );
 	} 
 }

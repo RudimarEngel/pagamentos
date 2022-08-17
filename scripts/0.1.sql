@@ -12,7 +12,7 @@ create database pagamentos;
 use pagamentos;
 
 create table UsuarioTipo(
-  UsuarioTipoId bigint not null AUTO_INCREMENT,
+  UsuarioTipoId igint not null AUTO_INCREMENT,
   Tipo varchar(10),
 
   primary key (UsuarioTipoId)
@@ -28,16 +28,30 @@ create table Usuario (
   SenhaSal varchar(50) not null,
 
   primary key (UsuarioId),
-  FOREIGN KEY (UsuarioTipoId) REFERENCES UsuarioTipo(UsuarioTipoId)
+  foreign key (UsuarioTipoId) references UsuarioTipo(UsuarioTipoId)
+)
+AUTO_INCREMENT=1;
+
+create table Conta (
+  ContaId bigint not null AUTO_INCREMENT,
+  UsuarioId bigint not null,
+  Saldo decimal(9,2) not null default '0.00',
+
+  primary key (ContaId),
+  foreign key (UsuarioId) references Usuario(UsuarioId)
 )
 AUTO_INCREMENT=1;
 
 
 
-
 -- DADOS MOCK
+truncate table UsuarioTipo;
 insert into UsuarioTipo (Tipo) values ('lojistas'),('comuns');
 
+truncate table Usuario;
 insert into Usuario (UsuarioTipoId, Nome, CpfCnpj, Email, Senha, SenhaSal)
 values (2,'Rudimar Engel', '12345678910', 'rudimar@gmail.com', 'senhateste1', 'salsenhateste1'),
        (1,"Moe's", '01234567891011', 'moe@moesbar.com', 'senhateste2', 'salsenhateste2');
+
+truncate table Conta;
+insert into Conta (UsuarioId, Saldo) values (1,300.12),(2, 25012.01);
