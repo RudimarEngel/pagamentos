@@ -44,11 +44,19 @@ AUTO_INCREMENT=1;
 
 create table Acao (
   AcaoId  bigint not null AUTO_INCREMENT,
-)
+  Acao varchar(14) not null unique,
+  CreatedAt timestamp not null default current_timestamp(),
+  DeletedAt  timestamp not null default '0000-00-00 00:00:00',
 
+  primary key (AcaoId)
+)
+AUTO_INCREMENT=1;
 
 
 -- DADOS MOCK
+truncate table Acao;
+insert into Acao (Acao) values('transferencia'), ('erro'), ('rollback');
+
 truncate table UsuarioTipo;
 insert into UsuarioTipo (Tipo) values ('lojistas'),('comuns');
 

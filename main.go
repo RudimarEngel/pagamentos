@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"io/ioutil"
 	"encoding/json"
+	"time"
 
-//	"./pkg"
 )
 
 type transferencia struct {
@@ -102,6 +102,34 @@ func atualizarSaldo(db *sql.DB, UsuarioId int, novoSaldo float64) bool {
 	return true
 }
 
+func registroBilhetes(db *sql.DB) {
+
+	// query := "SHOW TABLES LIKE 'pagamentos.Conta';"
+	hora := time.Now()
+	fmt.Println("AAAAAAAAAAAAAAAAA, hora: ", hora.Format("2006-01-02 15:04:05"))
+	fmt.Println("AAAAAAAAAAAAAAAAA, hora: ", hora.Format("20060102"))
+	tabela := "Bilhetes_" + hora.Format("20060102")
+	query := "SELECT * FROM information_schema.tables "+
+					 "WHERE table_schema = 'pagamentos'" +
+						" AND table_name = '" + tabela + "' LIMIT 1;"
+
+	fmt.Println("query: ", query)
+
+	results, err := db.Query(query)
+	if err !=nil {
+			panic(err.Error())
+	}
+	if !results.Next() {
+		fmt.Println(false);
+		// Cria  a tabela do dia, caso ela não exista
+		query = "CREATE TABLE IF NOT EXISTS " + tabela + " (" + 
+	}
+
+	// realiza o insert de dados
+	fmt.Println("FAZ O INSERT")
+
+}
+
 func postTransferencia(c *gin.Context) {
 	var novaTransferencia transferencia
 	if err := c.BindJSON(&novaTransferencia); err != nil {
@@ -147,10 +175,10 @@ func postTransferencia(c *gin.Context) {
 
 			// Salva o registro na tabelha bilhetes para possíveis cancelamentos.
 			if operacaoExecutada {
-
-			} else {
+				registroBilhetes(db);
+			} /*else {
 				// registra o erro no pagamento
-			}
+			}*/
 
 
 			// fecha a conexão com o banco
