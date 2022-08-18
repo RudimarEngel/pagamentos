@@ -62,8 +62,6 @@ func consultaAutorizacao() bool {
 	var verify autorizacao
 	_ = json.Unmarshal([]byte(string(body)), &verify)
 
-	fmt.Println(" -> verify.Authorization: ", verify.Authorization)
-
 	return verify.Authorization
 }
 
@@ -89,8 +87,6 @@ func consultaSaldo(db *sql.DB, UsuarioId int) conta {
 
 func atualizarSaldo(db *sql.DB, UsuarioId int, novoSaldo float64) bool {
 
-	fmt.Println("novoSaldo: ", novoSaldo)
-
 	query := "UPDATE Conta SET Saldo = " + fmt.Sprintf("%f", novoSaldo) + 
 						 " WHERE UsuarioId = " + strconv.Itoa(UsuarioId) + ";"
 					
@@ -102,12 +98,10 @@ func atualizarSaldo(db *sql.DB, UsuarioId int, novoSaldo float64) bool {
 	return true
 }
 
-func registroBilhetes(db *sql.DB, pagante int, recebedor int, acao int, valor float64) bool {
+func registroBilhetes(db *sql.DB, pagante int, recebedor int, acao int, maquina int, valor float64) bool {
 
 	// query := "SHOW TABLES LIKE 'pagamentos.Conta';"
 	hora := time.Now()
-	fmt.Println("AAAAAAAAAAAAAAAAA, hora: ", hora.Format("2006-01-02 15:04:05"))
-	fmt.Println("AAAAAAAAAAAAAAAAA, hora: ", hora.Format("20060102"))
 	tabela := "Bilhetes_" + hora.Format("20060102")
 	
 	query := "CREATE TABLE IF NOT EXISTS " + tabela + "  (" +
@@ -127,9 +121,10 @@ func registroBilhetes(db *sql.DB, pagante int, recebedor int, acao int, valor fl
 	}
 
 	// realiza o insert de dados
-	query = "INSERT INTO " + tabela + "(IdUsuarioPag, IdUsuarioRec, AcaoId, Valor, CreatedAt)" +
+	query = "INSERT INTO " + tabela + "(IdUsuarioPag, IdUsuarioRec, AcaoId, Valor, MaquinaId, CreatedAt)" +
 					"VALUES ("+ strconv.Itoa(pagante) + "," + strconv.Itoa(recebedor) + "," +
-					strconv.Itoa(acao) + "," + fmt.Sprintf("%f", valor) + ",'" + hora.Format("2006-01-02 15:04:05") +
+					strconv.Itoa(acao) + "," + fmt.Sprintf("%f", valor) +","+ strconv.Itoa(maquina) +",'" + 
+					hora.Format("2006-01-02 15:04:05") +
 					"');"
 	
 	_, err = db.Query(query)
@@ -149,21 +144,15 @@ func postTransferencia(c *gin.Context) {
 
 	db := dbConnection();
 
-	// Verifica o Id do recebedor, considerando que este seja o dono da máquina
-	// Mas, acredito que o login deve ser da maquininha, ou de alguma outra ferramenta de pagamento.
+	// Verifica o Id do recebedor, considerando que este seja o dono da máquina, ou o dono do app do smartphone
 	if varificarLogin(db, novaTransferencia.IdRecebedor) {
 
 		// Verifica o saldo do pagador
 		saldoPagador := consultaSaldo(db, novaTransferencia.IdPagante)
-		fmt.Println("saldoPagador.UsuarioId: ", saldoPagador.UsuarioId)
-		fmt.Println("saldoPagador.Saldo: ", saldoPagador.Saldo)
 
 		if saldoPagador.Saldo >= novaTransferencia.Valor {
-			fmt.Println("Saldo Suficiente!")
 			// consulta o saldo do recebedor
 			saldoRecebedor := consultaSaldo(db, novaTransferencia.IdRecebedor)
-			fmt.Println("saldoRecebedor.UsuarioId: ", saldoRecebedor.UsuarioId)
-			fmt.Println("saldoRecebedor.Saldo: ", saldoRecebedor.Saldo)
 
 			// Consulta o servidor autorizador
 			if !consultaAutorizacao() {
@@ -179,13 +168,12 @@ func postTransferencia(c *gin.Context) {
 			if operacaoExecutada {
 				operacaoExecutada = atualizarSaldo(db, novaTransferencia.IdRecebedor, novoSaldoRecebedor)
 			}
-			fmt.Println("operacaoExecutada: ", operacaoExecutada)
 
 			// Verifica os novos saldos?
 
 			// Salva o registro na tabelha bilhetes para possíveis cancelamentos.
 			if operacaoExecutada {
-				registroBilhetes(db, novaTransferencia.IdPagante, novaTransferencia.IdRecebedor, 1, novaTransferencia.Valor);
+				registroBilhetes(db, novaTransferencia.IdPagante, novaTransferencia.IdRecebedor, 1, 1,novaTransferencia.Valor);
 			} /*else {
 				// registra o erro no pagamento
 			}*/
@@ -200,12 +188,10 @@ func postTransferencia(c *gin.Context) {
 			} else {
 				c.IndentedJSON(http.StatusInternalServerError , "Erro ao efetuar o pagamento!");
 			}
-			
 
 		} else {
 			// fecha a conexão com o banco
 			defer db.Close()
-			fmt.Println("Saldo Insuficiente!")
 			c.IndentedJSON(http.StatusOK , "Saldo Insuficiente!");
 		}
 
