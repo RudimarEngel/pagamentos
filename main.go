@@ -102,33 +102,44 @@ func atualizarSaldo(db *sql.DB, UsuarioId int, novoSaldo float64) bool {
 	return true
 }
 
-func registroBilhetes(db *sql.DB) {
+func registroBilhetes(db *sql.DB, pagante int, recebedor int, acao int, valor float64) bool {
 
 	// query := "SHOW TABLES LIKE 'pagamentos.Conta';"
 	hora := time.Now()
 	fmt.Println("AAAAAAAAAAAAAAAAA, hora: ", hora.Format("2006-01-02 15:04:05"))
 	fmt.Println("AAAAAAAAAAAAAAAAA, hora: ", hora.Format("20060102"))
 	tabela := "Bilhetes_" + hora.Format("20060102")
-	query := "SELECT * FROM information_schema.tables "+
-					 "WHERE table_schema = 'pagamentos'" +
-						" AND table_name = '" + tabela + "' LIMIT 1;"
-
-	fmt.Println("query: ", query)
-
-	results, err := db.Query(query)
+	
+	query := "CREATE TABLE IF NOT EXISTS " + tabela + "  (" +
+							tabela + "Id bigint not null AUTO_INCREMENT," +
+							"IdUsuarioPag bigint," +
+							"IdUsuarioRec bigint," +
+							"AcaoId bigint not null," +
+							"Valor decimal(9,2)," +
+							"MaquinaId bigint," +
+							"CreatedAt timestamp default current_timestamp()," +
+							"PRIMARY KEY (" + tabela + "Id)"+
+						") AUTO_INCREMENT=1;"
+	
+	_, err := db.Query(query)
 	if err !=nil {
-			panic(err.Error())
-	}
-	if !results.Next() {
-		fmt.Println(false);
-		// Cria  a tabela do dia, caso ela não exista
-		query = "CREATE TABLE IF NOT EXISTS " + tabela + " (" + 
+		return false
 	}
 
 	// realiza o insert de dados
-	fmt.Println("FAZ O INSERT")
-
+	query = "INSERT INTO " + tabela + "(IdUsuarioPag, IdUsuarioRec, AcaoId, Valor, CreatedAt)" +
+					"VALUES ("+ strconv.Itoa(pagante) + "," + strconv.Itoa(recebedor) + "," +
+					strconv.Itoa(acao) + "," + fmt.Sprintf("%f", valor) + ",'" + hora.Format("2006-01-02 15:04:05") +
+					"');"
+	
+	_, err = db.Query(query)
+	if err !=nil {
+		return false
+	}
+	return true
 }
+
+// INSERT INTO Bilhetes_20220817(IdUsuarioPag, IdUsuarioRec, AcaoId, Valor, CreatedAt)VALUES (1,2,1,0.010000,'2022-08-17 20:59:36')
 
 func postTransferencia(c *gin.Context) {
 	var novaTransferencia transferencia
@@ -175,7 +186,7 @@ func postTransferencia(c *gin.Context) {
 
 			// Salva o registro na tabelha bilhetes para possíveis cancelamentos.
 			if operacaoExecutada {
-				registroBilhetes(db);
+				registroBilhetes(db, novaTransferencia.IdPagante, novaTransferencia.IdRecebedor, 1, novaTransferencia.Valor);
 			} /*else {
 				// registra o erro no pagamento
 			}*/

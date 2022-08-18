@@ -52,6 +52,20 @@ create table Acao (
 )
 AUTO_INCREMENT=1;
 
+/*
+-- Tabela criada automaticamente
+CREATE TABLE IF NOT EXISTS Bilhetes_20220817  ( 
+	Bilhetes_20220817Id bigint not null AUTO_INCREMENT,
+	IdUsuarioPag bigint,
+	IdUsuarioRec bigint,
+	AcaoId bigint not null,
+	Valor decimal(9,2),
+	MaquinaId bigint,
+	CreatedAt timestamp default current_timestamp(),
+	PRIMARY KEY (Bilhetes_20220817Id)
+) AUTO_INCREMENT=1;
+*/
+
 
 -- DADOS MOCK
 truncate table Acao;
