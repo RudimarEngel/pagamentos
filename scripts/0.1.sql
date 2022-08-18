@@ -52,6 +52,18 @@ create table Acao (
 )
 AUTO_INCREMENT=1;
 
+create table Maquina (
+  MaquinaId bigint not null AUTO_INCREMENT,
+  UsuarioId bigint not null,
+  Marca varchar(15),
+  Modelo varchar(15),
+
+  primary key (MaquinaId)
+) AUTO_INCREMENT=1;
+
+truncate table Maquina;
+insert into Maquina(UsuarioId, Marca, Modelo) VALUES (2, 'Q2', 'Queridona Smart');
+
 /*
 -- Tabela criada automaticamente
 CREATE TABLE IF NOT EXISTS Bilhetes_20220817  ( 

@@ -139,7 +139,6 @@ func registroBilhetes(db *sql.DB, pagante int, recebedor int, acao int, valor fl
 	return true
 }
 
-// INSERT INTO Bilhetes_20220817(IdUsuarioPag, IdUsuarioRec, AcaoId, Valor, CreatedAt)VALUES (1,2,1,0.010000,'2022-08-17 20:59:36')
 
 func postTransferencia(c *gin.Context) {
 	var novaTransferencia transferencia
