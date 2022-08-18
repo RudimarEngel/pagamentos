@@ -134,6 +134,14 @@ func registroBilhetes(db *sql.DB, pagante int, recebedor int, acao int, maquina 
 	return true
 }
 
+/*
+func verificarUsuarios(db *sql.DB, pagante int, recebedor int) bool {
+
+	usuariosOk := true
+
+	return usuariosOk;
+} */
+
 
 func postTransferencia(c *gin.Context) {
 	var novaTransferencia transferencia
@@ -144,29 +152,31 @@ func postTransferencia(c *gin.Context) {
 
 	db := dbConnection();
 
+	// teste := verificarUsuarios(db, novaTransferencia.IdRecebedor, novaTransferencia.IdPagante);
+
 	// Verifica o Id do recebedor, considerando que este seja o dono da máquina, ou o dono do app do smartphone
-	if varificarLogin(db, novaTransferencia.IdRecebedor) {
+	if verificarLogin(db, novaTransferencia.IdRecebedor) {
 
 		// Verifica o saldo do pagador
-		saldoPagador := consultaSaldo(db, novaTransferencia.IdPagante)
+		saldoPagador := consultaSaldo(db, novaTransferencia.IdPagante);
 
 		if saldoPagador.Saldo >= novaTransferencia.Valor {
 			// consulta o saldo do recebedor
-			saldoRecebedor := consultaSaldo(db, novaTransferencia.IdRecebedor)
+			saldoRecebedor := consultaSaldo(db, novaTransferencia.IdRecebedor);
 
 			// Consulta o servidor autorizador
 			if !consultaAutorizacao() {
 				c.IndentedJSON( http.StatusUnauthorized, "Pagamento não autorizado!" ); // 401
-				defer db.Close()
+				defer db.Close();
 			}
 
 			// Realiza a tarnsferência - alteração de saldos
-			novoSaldoPagador   := saldoPagador.Saldo - novaTransferencia.Valor
-			novoSaldoRecebedor := saldoRecebedor.Saldo + novaTransferencia.Valor
-			operacaoExecutada := atualizarSaldo(db, novaTransferencia.IdPagante, novoSaldoPagador)
+			novoSaldoPagador   := saldoPagador.Saldo - novaTransferencia.Valor;
+			novoSaldoRecebedor := saldoRecebedor.Saldo + novaTransferencia.Valor;
+			operacaoExecutada := atualizarSaldo(db, novaTransferencia.IdPagante, novoSaldoPagador);
 
 			if operacaoExecutada {
-				operacaoExecutada = atualizarSaldo(db, novaTransferencia.IdRecebedor, novoSaldoRecebedor)
+				operacaoExecutada = atualizarSaldo(db, novaTransferencia.IdRecebedor, novoSaldoRecebedor);
 			}
 
 			// Verifica os novos saldos?
@@ -180,7 +190,7 @@ func postTransferencia(c *gin.Context) {
 
 
 			// fecha a conexão com o banco
-			defer db.Close()
+			defer db.Close();
 			
 			// c.IndentedJSON(http.StatusCreated, novaTransferencia)
 			if operacaoExecutada {
@@ -191,26 +201,26 @@ func postTransferencia(c *gin.Context) {
 
 		} else {
 			// fecha a conexão com o banco
-			defer db.Close()
+			defer db.Close();
 			c.IndentedJSON(http.StatusOK , "Saldo Insuficiente!");
 		}
 
 		
 	} else {
 		// fecha a conexão com o banco
-		defer db.Close()
+		defer db.Close();
 		c.IndentedJSON( http.StatusUnauthorized, "Acesso negado!" );
 	} 
 }
 
 
-func varificarLogin (db *sql.DB, UsuarioId int) bool {
+func verificarLogin (db *sql.DB, UsuarioId int) bool {
 
-	query := "SELECT Nome FROM Usuario WHERE UsuarioId = " + strconv.Itoa(UsuarioId) + ";"
+	query := "SELECT Nome FROM Usuario WHERE UsuarioId = " + strconv.Itoa(UsuarioId) + ";";
 	
-	results, err := db.Query(query)
+	results, err := db.Query(query);
 	if err !=nil {
-			panic(err.Error())
+			panic(err.Error());
 	}
 	if results.Next() {
 		return true;
@@ -223,7 +233,7 @@ func varificarLogin (db *sql.DB, UsuarioId int) bool {
 func main() {
 	router := gin.Default()
 	// router.GET("/albums", getAlbums)
-	router.POST("/transferencia", postTransferencia)
+	router.POST("/transferencia", postTransferencia);
 
-	router.Run("localhost:8080")
+	router.Run("localhost:8080");
 }

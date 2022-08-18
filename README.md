@@ -10,3 +10,21 @@
 
 # LEITURAS:
 - https://www.vivaolinux.com.br/dica/Access-denied-for-user-rootlocalhost-no-MySQL-Server-Community-57-Resolvido-CentOS7-x86-64
+
+
+# BANCO:
+-- mysql -u root -p pagamentos
+  -- password: 
+-- show databases;
+-- SELECT CURRENT_USER();
+-- ALTER USER 'root'@'localhost' IDENTIFIED BY 'senha_fake';
+
+# REQUISIÇÃO:
+POST, http://localhost:8080/transferencia
+Body:
+{
+    "valor": 0.02,
+    "IdPagante": 1,
+    "IdRecebedor": 2,
+    "MaquinaId": 1
+}
