@@ -13,6 +13,10 @@
 
 
 # BANCO:
+
+MariaDB, versão 10.6.8;
+Para criar o banco com os dados iniciais, primiero rodar o que está no arquivo 0.1.sql e depois o que está no arquivo dados_mocados.sql. Ambos na pasta scripts
+
 -- mysql -u root -p pagamentos
   -- password: 
 -- show databases;

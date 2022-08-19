@@ -19,9 +19,10 @@ import (
 
 type transferencia struct {
 	// ID		 string `json:"id"`
-	Valor	 float64 `json:"valor"`
-	IdPagante int `json:"IdPagante"`
-	IdRecebedor	 int `json:"IdRecebedor"`
+	Valor	 			float64 `json:"valor"`
+	IdPagante 	int `json:"IdPagante"`
+	IdRecebedor	int `json:"IdRecebedor"`
+	MaquinaId		int `json:"MaquinaId"`
 }
 
 type usuario struct {
@@ -103,7 +104,6 @@ func atualizarSaldo(db *sql.DB, UsuarioId int, novoSaldo float64) bool {
 
 func registroBilhetes(db *sql.DB, pagante int, recebedor int, acao int, maquina int, valor float64) bool {
 
-	// query := "SHOW TABLES LIKE 'pagamentos.Conta';"
 	hora := time.Now()
 	tabela := "Bilhetes_" + hora.Format("20060102")
 	
@@ -146,12 +146,13 @@ func verificarUsuarios(db *sql.DB, recebedor int, pagante int) bool {
 	// Verifica se o usuário pagante é do tipo comum
 	query := "  select Usuario.Nome, UsuarioTipo.UsuarioTipoId, UsuarioTipo.Tipo"+
 						" from Usuario "+
-						" inner join UsuarioTipo on UsuarioTipo.UsuarioTipoId = Usuario.UsuarioTipoId "+
+						" inner join UsuarioTipo on UsuarioTipo.UsuarioTipoId = Usuario.UsuarioTipoId " +
+						" inner join Conta on Conta.UsuarioId = Usuario.UsuarioId " +
 						" where Usuario.UsuarioId = "+ strconv.Itoa(pagante) + 
-						"	and UsuarioTipo.Tipo = 'comum' "+
-						"	and Usuario.Ativo = 1 " +
-						"	and Usuario.DeletedAt = '0000-00-00 00:00:00';" 
-	fmt.Println("query: ", query)
+						"	 and UsuarioTipo.Tipo = 'comum' "+
+						"	 and Usuario.Ativo = 1 " +
+						"	 and Usuario.DeletedAt = '0000-00-00 00:00:00';" 
+	
 	results, err := db.Query(query)
 	if err !=nil {
 		panic(err.Error())
@@ -161,13 +162,14 @@ func verificarUsuarios(db *sql.DB, recebedor int, pagante int) bool {
 	}
 
 	// Verifica se o usuário recebedor é do tipo comum ou lojista
-	query = "select Usuario.Nome, UsuarioTipo.UsuarioTipoId, UsuarioTipo.Tipo " +
-					"from Usuario " +
-					"inner join UsuarioTipo on UsuarioTipo.UsuarioTipoId = Usuario.UsuarioTipoId " +
-					"where Usuario.UsuarioId = " + strconv.Itoa(pagante) + 
-					"	and ( UsuarioTipo.Tipo = 'lojista' OR UsuarioTipo.Tipo = 'comum' ) " +
-					"	and Usuario.Ativo = 1 " +
-					"	and Usuario.DeletedAt = '0000-00-00 00:00:00';"
+	query = " select Usuario.Nome, UsuarioTipo.UsuarioTipoId, UsuarioTipo.Tipo " +
+					" from Usuario " +
+					" inner join UsuarioTipo on UsuarioTipo.UsuarioTipoId = Usuario.UsuarioTipoId " +
+					" inner join Conta on Conta.UsuarioId = Usuario.UsuarioId " +
+					" where Usuario.UsuarioId = " + strconv.Itoa(recebedor) + 
+					"	 and ( UsuarioTipo.Tipo = 'lojista' OR UsuarioTipo.Tipo = 'comum' ) " +
+					"	 and Usuario.Ativo = 1 " +
+					"	 and Usuario.DeletedAt = '0000-00-00 00:00:00';"
 
 	results, err = db.Query(query)
 	if err !=nil {
@@ -189,65 +191,69 @@ func postTransferencia(c *gin.Context) {
 
 	db := dbConnection();
 
-	teste := verificarUsuarios(db, novaTransferencia.IdRecebedor, novaTransferencia.IdPagante);
-	fmt.Println("teste: ", teste)
+	if verificarUsuarios(db, novaTransferencia.IdRecebedor, novaTransferencia.IdPagante) {
+		// Verifica o Id do recebedor, considerando que este seja o dono da máquina, ou o dono do app do smartphone
+		if verificarLogin(db, novaTransferencia.IdRecebedor) {
 
-	// Verifica o Id do recebedor, considerando que este seja o dono da máquina, ou o dono do app do smartphone
-	if verificarLogin(db, novaTransferencia.IdRecebedor) {
+			// Verifica o saldo do pagador
+			saldoPagador := consultaSaldo(db, novaTransferencia.IdPagante);
 
-		// Verifica o saldo do pagador
-		saldoPagador := consultaSaldo(db, novaTransferencia.IdPagante);
+			if saldoPagador.Saldo >= novaTransferencia.Valor {
+				// consulta o saldo do recebedor
+				saldoRecebedor := consultaSaldo(db, novaTransferencia.IdRecebedor);
 
-		if saldoPagador.Saldo >= novaTransferencia.Valor {
-			// consulta o saldo do recebedor
-			saldoRecebedor := consultaSaldo(db, novaTransferencia.IdRecebedor);
+				// Consulta o servidor autorizador
+				if !consultaAutorizacao() {
+					c.IndentedJSON( http.StatusUnauthorized, "Pagamento não autorizado!" ); // 401
+					defer db.Close();
+				}
 
-			// Consulta o servidor autorizador
-			if !consultaAutorizacao() {
-				c.IndentedJSON( http.StatusUnauthorized, "Pagamento não autorizado!" ); // 401
+				// Realiza a tarnsferência - alteração de saldos
+				novoSaldoPagador   := saldoPagador.Saldo - novaTransferencia.Valor;
+				novoSaldoRecebedor := saldoRecebedor.Saldo + novaTransferencia.Valor;
+				operacaoExecutada := atualizarSaldo(db, novaTransferencia.IdPagante, novoSaldoPagador);
+
+				if operacaoExecutada {
+					operacaoExecutada = atualizarSaldo(db, novaTransferencia.IdRecebedor, novoSaldoRecebedor);
+				}
+
+				// Verifica os novos saldos?
+
+				// Salva o registro na tabelha bilhetes para possíveis cancelamentos.
+				if operacaoExecutada {
+					registroBilhetes(db, novaTransferencia.IdPagante, novaTransferencia.IdRecebedor, 1, novaTransferencia.MaquinaId, novaTransferencia.Valor);
+				} 
+
+
+				// fecha a conexão com o banco
 				defer db.Close();
-			}
+				
+				// c.IndentedJSON(http.StatusCreated, novaTransferencia)
+				if operacaoExecutada {
+					c.IndentedJSON(http.StatusOK , "Pagamento efetuado!");
+				} else {
+					registroBilhetes(db, novaTransferencia.IdPagante, novaTransferencia.IdRecebedor, 2, novaTransferencia.MaquinaId,novaTransferencia.Valor);
+					defer db.Close();
+					c.IndentedJSON(http.StatusInternalServerError , "Erro ao efetuar o pagamento!");
+				}
 
-			// Realiza a tarnsferência - alteração de saldos
-			novoSaldoPagador   := saldoPagador.Saldo - novaTransferencia.Valor;
-			novoSaldoRecebedor := saldoRecebedor.Saldo + novaTransferencia.Valor;
-			operacaoExecutada := atualizarSaldo(db, novaTransferencia.IdPagante, novoSaldoPagador);
-
-			if operacaoExecutada {
-				operacaoExecutada = atualizarSaldo(db, novaTransferencia.IdRecebedor, novoSaldoRecebedor);
-			}
-
-			// Verifica os novos saldos?
-
-			// Salva o registro na tabelha bilhetes para possíveis cancelamentos.
-			if operacaoExecutada {
-				registroBilhetes(db, novaTransferencia.IdPagante, novaTransferencia.IdRecebedor, 1, 1,novaTransferencia.Valor);
-			} /*else {
-				// registra o erro no pagamento
-			}*/
-
-
-			// fecha a conexão com o banco
-			defer db.Close();
-			
-			// c.IndentedJSON(http.StatusCreated, novaTransferencia)
-			if operacaoExecutada {
-				c.IndentedJSON(http.StatusOK , "Pagamento efetuado!");
 			} else {
-				c.IndentedJSON(http.StatusInternalServerError , "Erro ao efetuar o pagamento!");
+				// fecha a conexão com o banco
+				registroBilhetes(db, novaTransferencia.IdPagante, novaTransferencia.IdRecebedor, 2, novaTransferencia.MaquinaId,novaTransferencia.Valor);
+				defer db.Close();
+				c.IndentedJSON(http.StatusUnauthorized , "Saldo Insuficiente!");
 			}
 
+			
 		} else {
 			// fecha a conexão com o banco
+			registroBilhetes(db, novaTransferencia.IdPagante, novaTransferencia.IdRecebedor, 2, novaTransferencia.MaquinaId,novaTransferencia.Valor);
 			defer db.Close();
-			c.IndentedJSON(http.StatusOK , "Saldo Insuficiente!");
+			c.IndentedJSON( http.StatusUnauthorized, "Acesso negado!" );
 		}
-
-		
 	} else {
-		// fecha a conexão com o banco
-		defer db.Close();
-		c.IndentedJSON( http.StatusUnauthorized, "Acesso negado!" );
+		registroBilhetes(db, novaTransferencia.IdPagante, novaTransferencia.IdRecebedor, 2, novaTransferencia.MaquinaId,novaTransferencia.Valor);
+		c.IndentedJSON(http.StatusUnauthorized , "Erro nos dados inseridos ou de cadastro!");
 	} 
 }
 
