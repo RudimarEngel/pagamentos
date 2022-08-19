@@ -19,7 +19,7 @@ create table UsuarioTipo(
 create table Usuario (
   UsuarioId bigint not null AUTO_INCREMENT,
   UsuarioTipoId bigint not null,
-  Nome varchar(20),
+  Nome varchar(20) not null,
   CpfCnpj varchar(14) not null unique,
   Email varchar(25) not null unique,
   Senha varchar(50) not null,
@@ -86,3 +86,8 @@ CREATE TABLE IF NOT EXISTS Bilhetes_20220817  (
 
 
 show tables;
+-- Acao
+-- Conta
+-- Maquina
+-- Usuario
+-- UsuarioTipo

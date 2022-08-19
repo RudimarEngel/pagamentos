@@ -25,11 +25,14 @@ type transferencia struct {
 }
 
 type usuario struct {
-	UsuarioId 		int `json:"id"`
-	UsuarioTipoId int `json:"UsuarioTipoId"`
+	UsuarioId 		int 	 `json:"id"`
+	UsuarioTipoId int 	 `json:"UsuarioTipoId"`
 	Nome 					string `json:"Nome"`
 	CpfCnpj 			string `json:"CpfCnpj"`
 	Email 				string `json:"Email"`
+	Ativo					bool	 `json:"Ativo"`
+	DeletedAt			string `json:"DeletedAt"`
+	Tipo					string `json:"Tipo"`
 }
 
 type autorizacao struct {
@@ -134,14 +137,48 @@ func registroBilhetes(db *sql.DB, pagante int, recebedor int, acao int, maquina 
 	return true
 }
 
-/*
-func verificarUsuarios(db *sql.DB, pagante int, recebedor int) bool {
+func verificarUsuarios(db *sql.DB, recebedor int, pagante int) bool {
 
-	usuariosOk := true
+	if pagante == recebedor {
+		return false;
+	}
 
-	return usuariosOk;
-} */
+	// Verifica se o usuário pagante é do tipo comum
+	query := "  select Usuario.Nome, UsuarioTipo.UsuarioTipoId, UsuarioTipo.Tipo"+
+						" from Usuario "+
+						" inner join UsuarioTipo on UsuarioTipo.UsuarioTipoId = Usuario.UsuarioTipoId "+
+						" where Usuario.UsuarioId = "+ strconv.Itoa(pagante) + 
+						"	and UsuarioTipo.Tipo = 'comum' "+
+						"	and Usuario.Ativo = 1 " +
+						"	and Usuario.DeletedAt = '0000-00-00 00:00:00';" 
+	fmt.Println("query: ", query)
+	results, err := db.Query(query)
+	if err !=nil {
+		panic(err.Error())
+	}
+	if !results.Next() {
+		return false
+	}
 
+	// Verifica se o usuário recebedor é do tipo comum ou lojista
+	query = "select Usuario.Nome, UsuarioTipo.UsuarioTipoId, UsuarioTipo.Tipo " +
+					"from Usuario " +
+					"inner join UsuarioTipo on UsuarioTipo.UsuarioTipoId = Usuario.UsuarioTipoId " +
+					"where Usuario.UsuarioId = " + strconv.Itoa(pagante) + 
+					"	and ( UsuarioTipo.Tipo = 'lojista' OR UsuarioTipo.Tipo = 'comum' ) " +
+					"	and Usuario.Ativo = 1 " +
+					"	and Usuario.DeletedAt = '0000-00-00 00:00:00';"
+
+	results, err = db.Query(query)
+	if err !=nil {
+		panic(err.Error())
+	}
+	if !results.Next() {
+		return false
+	}
+
+	return true;
+} 
 
 func postTransferencia(c *gin.Context) {
 	var novaTransferencia transferencia
@@ -152,7 +189,8 @@ func postTransferencia(c *gin.Context) {
 
 	db := dbConnection();
 
-	// teste := verificarUsuarios(db, novaTransferencia.IdRecebedor, novaTransferencia.IdPagante);
+	teste := verificarUsuarios(db, novaTransferencia.IdRecebedor, novaTransferencia.IdPagante);
+	fmt.Println("teste: ", teste)
 
 	// Verifica o Id do recebedor, considerando que este seja o dono da máquina, ou o dono do app do smartphone
 	if verificarLogin(db, novaTransferencia.IdRecebedor) {

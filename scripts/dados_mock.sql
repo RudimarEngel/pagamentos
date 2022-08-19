@@ -1,16 +1,27 @@
-truncate table Acao;
 insert into Acao (Acao) values('transferencia'), ('erro'), ('rollback');
 
-truncate table UsuarioTipo;
-insert into UsuarioTipo (Tipo) values ('lojistas'),('comuns');
+insert into UsuarioTipo (Tipo) values ('lojista'),('comum');
 
-truncate table Usuario;
 insert into Usuario (UsuarioTipoId, Nome, CpfCnpj, Email, Senha, SenhaSal)
 values (2,'Rudimar Engel', '12345678910', 'rudimar@gmail.com', 'senhateste1', 'salsenhateste1'),
-       (1,"Moe's", '01234567891011', 'moe@moesbar.com', 'senhateste2', 'salsenhateste2');
+       (1,"Moe's", '01234567891011', 'moe@moesbar.com', 'senhateste2', 'salsenhateste2'),
+       (2, 'Homer Simpson', '01987654321', 'homer@moesbar.com', 'senhateste3', 'salsenhateste3' );
 
-truncate table Conta;
-insert into Conta (UsuarioId, Saldo) values (1,300.12),(2, 25012.01);
+insert into Conta (UsuarioId, Saldo) values (1,300.12),(2, 25012.01), (3,256.55);
 
-truncate table Maquina;
 insert into Maquina(UsuarioId, Marca, Modelo) VALUES (2, 'Q2', 'Queridona Smart');
+
+
+select * from Usuario; select * from UsuarioTipo;
+
+/*
+-- faltou considerar se o usuário tem conta
+select Usuario.Nome, UsuarioTipo.UsuarioTipoId, UsuarioTipo.Tipo
+from Usuario 
+inner join UsuarioTipo on UsuarioTipo.UsuarioTipoId = Usuario.UsuarioTipoId 
+where Usuario.UsuarioId = 3
+  and ( UsuarioTipo.Tipo = 'lojista' OR UsuarioTipo.Tipo = 'comum' )
+  and Usuario.Ativo = 1
+  and Usuario.DeletedAt = '0000-00-00 00:00:00';
+*/
+
