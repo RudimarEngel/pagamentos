@@ -224,7 +224,6 @@ func postTransferencia(c *gin.Context) {
 					registroBilhetes(db, novaTransferencia.IdPagante, novaTransferencia.IdRecebedor, 1, novaTransferencia.MaquinaId, novaTransferencia.Valor);
 				} 
 
-
 				// fecha a conexão com o banco
 				defer db.Close();
 				
@@ -244,7 +243,6 @@ func postTransferencia(c *gin.Context) {
 				c.IndentedJSON(http.StatusUnauthorized , "Saldo Insuficiente!");
 			}
 
-			
 		} else {
 			// fecha a conexão com o banco
 			registroBilhetes(db, novaTransferencia.IdPagante, novaTransferencia.IdRecebedor, 2, novaTransferencia.MaquinaId,novaTransferencia.Valor);
@@ -257,9 +255,9 @@ func postTransferencia(c *gin.Context) {
 	} 
 }
 
-
 func verificarLogin (db *sql.DB, UsuarioId int) bool {
 
+	// Esta consulta deve ser alterada para buscar dados de sessao e verifcação de token
 	query := "SELECT Nome FROM Usuario WHERE UsuarioId = " + strconv.Itoa(UsuarioId) + ";";
 	
 	results, err := db.Query(query);
